@@ -11,6 +11,7 @@ import numpy as np
 
 # Things a game state needs:
 # - the literal game state (board)
+# - whose turn it is
 # - pointer to the parent (if it exists)
 # - pointers to the children (if they exist)
 # - a total score
@@ -23,10 +24,11 @@ import numpy as np
 # UCBI is sum of Exploitation value + Exploration value
 class GameState:
 
-    def __init__(self, board):
+    def __init__(self, board, player):
         self.board = board
         self.total = 0
         self.visits = 0
+        self.player = player
 
         self.parent = None
         self.children = []
@@ -90,25 +92,18 @@ class GameState:
 
         return childScores
 
-S0 = GameState(None)
-S1 = GameState(None)
-S2 = GameState(None)
+# Things a MCTree needs:
+# - root node -> this will point to all the other nodes
+# - iterate() function that updates the values
+# - makeChoice(x) function that iterates x times and picks out the best branch
 
-S1.setParent(S0)
-S2.setParent(S0)
+# note: to write this, we need to assume that a few game-specific functions exist
+# 1) getNextMoves(currentBoard, player)
 
-S1.addToTotal(20)
-S1.addVisit()
-print(S0.getChildrenUCBIs())
+class MCTree:
 
+    def __init__(self, start):
 
-S2.addToTotal(10)
-S2.addVisit()
-print(S0.getChildrenUCBIs())
+        # note: this root is likely going to be a part of a different tree. So we can't just reuse it – we need to reset the total and visits
+        self.root = GameState(start.board)
 
-S3 = GameState(None)
-S3.setParent(S1)
-S3.addToTotal(0)
-S3.addVisit()
-
-print(S0.getChildrenUCBIs())
