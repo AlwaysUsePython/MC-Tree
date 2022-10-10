@@ -111,7 +111,10 @@ class GameState:
             return np.Infinity
 
         else:
-            exploitationValue = self.total / self.visits
+            try:
+                exploitationValue = self.total / self.visits
+            except:
+                exploitationValue = self.total // (self.visits)
 
             # NOTE: np.log is actually ln(), np.log10 is standard log()
             explorationValue = 50 * np.sqrt(np.log(self.parent.visits)/self.visits)
@@ -119,7 +122,11 @@ class GameState:
             if self.player != userPlayer:
                 explorationValue *= -1
 
-            return exploitationValue + explorationValue
+            try:
+                return exploitationValue + explorationValue
+            except:
+                return 1 * 10**200
+
 
     def getChildrenUCBIs(self):
         childScores = []
@@ -188,8 +195,8 @@ class MCTree:
         self.root = start #GameState(start.board, start.player)
         self.root.expand()
 
-        print("ROOT")
-        printBoard(self.root.board)
+        """print("ROOT")
+        printBoard(self.root.board)"""
 
     def iterate(self):
         leafToUpdate = self.root.findHighestUCBILeaf()
@@ -212,14 +219,20 @@ class MCTree:
                 pass
 
         approved = 0
-        max = childScores[0]
+        try:
+            max = childScores[0]
 
-        for item in range(len(childScores)):
-            if childScores[item] > max:
-                approved = item
-                max = childScores[item]
+            for item in range(len(childScores)):
+                if childScores[item] > max:
+                    approved = item
+                    max = childScores[item]
+            print(approved)
+            return [self.root.children[approved].board, max]
 
-        return [self.root.children[approved].board, max]
+        except:
+            print("except")
+            return [self.root.children[0].board, 50]
+
 
 
 
@@ -333,7 +346,7 @@ board = [
 
 gameOver = False
 turn = "X"
-userPlayer = "X"
+userPlayer = "O"
 
 while not gameOver:
 
@@ -346,7 +359,7 @@ while not gameOver:
 
     else:
         tree = MCTree(GameState(board, turn))
-        move = tree.makeChoice(2000)
+        move = tree.makeChoice(5000)
         board = move[0]
         print("expected:", move[1])
 
@@ -355,5 +368,14 @@ while not gameOver:
         print(turn, "has won!")
         printBoard(board)
         gameOver = True
+
+    else:
+        found = False
+        for r in range(3):
+            for c in range(3):
+                if board[r][c] == ".":
+                    found = True
+
+        gameOver = not found
 
     turn = getNextPlayer(turn)
