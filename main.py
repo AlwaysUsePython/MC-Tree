@@ -34,28 +34,38 @@ class GameState:
 
         self.parent = None
         self.children = []
+        self.leaf = False
 
-        if hasWon(self.board, self.player):
-            self.total = 50
-            self.visits = np.Infinity
-        elif hasWon(self.board, getNextPlayer(self.player)):
+        if hasWon(self.board, userPlayer):
             self.total = -50
             self.visits = np.Infinity
+            self.leaf = True
+        elif hasWon(self.board, getNextPlayer(userPlayer)):
+            self.total = 50
+            self.visits = np.Infinity
+            self.leaf = True
 
 
     def setParent(self, parentState):
         self.parent = parentState
         self.player = getNextPlayer(parentState.player)
         parentState.addChild(self)
-        if hasWon(self.board, self.player):
+        if hasWon(self.board, userPlayer):
             self.total = -50
             self.visits = np.Infinity
-        elif hasWon(self.board, getNextPlayer(self.player)):
+            self.leaf = True
+        elif hasWon(self.board, getNextPlayer(userPlayer)):
             self.total = 50
             self.visits = np.Infinity
+            self.leaf = True
 
     def addChild(self, childState):
         self.children.append(childState)
+
+    def roll(self):
+        if self.leaf:
+            return self.total
+        return simulate(self.board, getNextPlayer(self.player))
 
     def addToTotal(self, newValue):
         self.total += newValue
@@ -95,6 +105,8 @@ class GameState:
         # - self.total -> doesn't cause 0 division errors so we don't care
 
         if self.visits == 0:
+            if self.player == userPlayer:
+                return -np.Infinity
             return np.Infinity
 
         else:
@@ -102,6 +114,9 @@ class GameState:
 
             # NOTE: np.log is actually ln(), np.log10 is standard log()
             explorationValue = 50 * np.sqrt(np.log(self.parent.visits)/self.visits)
+
+            if self.player == userPlayer:
+                explorationValue *= -1
 
             return exploitationValue + explorationValue
 
@@ -130,12 +145,22 @@ class GameState:
         else:
             UCBIs = self.getChildrenUCBIs()
             favoriteChild = 0
-            max = UCBIs[0]
 
-            for childNum in range(len(UCBIs)):
-                if UCBIs[childNum] > max:
-                    favoriteChild = childNum
-                    max = UCBIs[childNum]
+            if self.player != userPlayer:
+                max = UCBIs[0]
+
+                for childNum in range(len(UCBIs)):
+                    if UCBIs[childNum] > max:
+                        favoriteChild = childNum
+                        max = UCBIs[childNum]
+
+            else:
+                min = UCBIs[0]
+
+                for childNum in range(len(UCBIs)):
+                    if UCBIs[childNum] < min:
+                        favoriteChild = childNum
+                        min = UCBIs[childNum]
 
             return self.children[favoriteChild].findHighestUCBILeaf()
 
@@ -168,7 +193,7 @@ class MCTree:
     def iterate(self):
         leafToUpdate = self.root.findHighestUCBILeaf()
 
-        score = simulate(leafToUpdate.board, getNextPlayer(leafToUpdate.player))
+        score = leafToUpdate.roll()
 
         leafToUpdate.addToTotal(score)
         leafToUpdate.addVisit()
@@ -238,9 +263,9 @@ def simulate(currentBoard, player):
     currentPlayer = getNextPlayer(player)
     boardCopy = getBoardCopy(currentBoard)
 
-    if hasWon(boardCopy, currentPlayer):
+    if hasWon(currentBoard, userPlayer):
         return -50
-    elif hasWon(boardCopy, player):
+    elif hasWon(currentBoard, getNextPlayer(userPlayer)):
         return 50
 
     simulationMoves = []
@@ -259,9 +284,9 @@ def simulate(currentBoard, player):
         currentPlayer = getNextPlayer(currentPlayer)
         nextMoves = getNextMoves(boardCopy, currentPlayer)
 
-    if player != currentPlayer and hasWon(boardCopy, currentPlayer):
+    if hasWon(boardCopy, userPlayer):
         score = -50
-    elif player == currentPlayer and hasWon(boardCopy, currentPlayer):
+    elif hasWon(boardCopy, getNextPlayer(userPlayer)):
         score = 50
     else:
         score = 0
