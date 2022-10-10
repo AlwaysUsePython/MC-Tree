@@ -48,10 +48,10 @@ class GameState:
         self.player = getNextPlayer(parentState.player)
         parentState.addChild(self)
         if hasWon(self.board, self.player):
-            self.total = 50
+            self.total = -50
             self.visits = np.Infinity
         elif hasWon(self.board, getNextPlayer(self.player)):
-            self.total = -50
+            self.total = 50
             self.visits = np.Infinity
 
     def addChild(self, childState):
@@ -319,7 +319,7 @@ while not gameOver:
 
     else:
         tree = MCTree(GameState(board, turn))
-        move = tree.makeChoice(2000)
+        move = tree.makeChoice(10)
         board = move[0]
         print("expected:", move[1])
 
