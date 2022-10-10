@@ -346,7 +346,7 @@ board = [
 
 gameOver = False
 turn = "X"
-userPlayer = "O"
+userPlayer = "X"
 
 while not gameOver:
 
@@ -377,5 +377,7 @@ while not gameOver:
                     found = True
 
         gameOver = not found
+        if gameOver:
+            printBoard(board)
 
     turn = getNextPlayer(turn)
