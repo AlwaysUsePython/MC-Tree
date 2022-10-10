@@ -35,10 +35,24 @@ class GameState:
         self.parent = None
         self.children = []
 
+        if hasWon(self.board, self.player):
+            self.total = 50
+            self.visits = np.Infinity
+        elif hasWon(self.board, getNextPlayer(self.player)):
+            self.total = -50
+            self.visits = np.Infinity
+
+
     def setParent(self, parentState):
         self.parent = parentState
         self.player = getNextPlayer(parentState.player)
         parentState.addChild(self)
+        if hasWon(self.board, self.player):
+            self.total = 50
+            self.visits = np.Infinity
+        elif hasWon(self.board, getNextPlayer(self.player)):
+            self.total = -50
+            self.visits = np.Infinity
 
     def addChild(self, childState):
         self.children.append(childState)
@@ -68,8 +82,12 @@ class GameState:
             self.parent.addVisit()
 
     def calculateUCBI(self):
+
+        if self.visits == np.Infinity:
+            return np.Infinity
+
         # Formula:
-        # average value + 2*√(ln(visits to parent)/visits to child)
+        # average value + 10*√(ln(visits to parent)/visits to child)
 
         # THINGS THAT CAN BE 0
         # - self.visits -> return infinity because we have a fully unexplored branch
@@ -83,7 +101,7 @@ class GameState:
             exploitationValue = self.total / self.visits
 
             # NOTE: np.log is actually ln(), np.log10 is standard log()
-            explorationValue = 2 * np.sqrt(np.log(self.parent.visits)/self.visits)
+            explorationValue = 50 * np.sqrt(np.log(self.parent.visits)/self.visits)
 
             return exploitationValue + explorationValue
 
@@ -102,9 +120,12 @@ class GameState:
             return self
 
         # recursive step(s):
-        if self.children != []:
+        if self.children == []:
             self.expand()
-            return self.children[0]
+            try:
+                return self.children[0]
+            except:
+                return self
 
         else:
             UCBIs = self.getChildrenUCBIs()
@@ -116,11 +137,11 @@ class GameState:
                     favoriteChild = childNum
                     max = UCBIs[childNum]
 
-            return self.children[favoriteChild]
+            return self.children[favoriteChild].findHighestUCBILeaf()
 
 
     def expand(self):
-        nextMoves = getNextMoves(self.board, getNextPlayer(self.player))
+        nextMoves = getNextMoves(self.board, self.player)
 
         for nextState in nextMoves:
             newState = GameState(getBoardCopy(nextState))
@@ -138,8 +159,11 @@ class MCTree:
     def __init__(self, start):
 
         # note: this root is likely going to be a part of a different tree. So we can't just reuse it – we need to reset the total and visits
-        self.root = GameState(start.board, start.player)
+        self.root = start #GameState(start.board, start.player)
         self.root.expand()
+
+        print("ROOT")
+        printBoard(self.root.board)
 
     def iterate(self):
         leafToUpdate = self.root.findHighestUCBILeaf()
@@ -156,7 +180,10 @@ class MCTree:
         childScores = []
 
         for child in self.root.children:
-            childScores.append(child.total / child.visits)
+            try:
+                childScores.append(child.total / child.visits)
+            except:
+                pass
 
         approved = 0
         max = childScores[0]
@@ -190,7 +217,7 @@ def getNextMoves(currentBoard, player):
 
     for row in range(3):
         for col in range(3):
-            if currentBoard[row][row] == '.':
+            if currentBoard[row][col] == '.':
                 boardCopy = getBoardCopy(currentBoard)
                 boardCopy[row][col] = player
                 nextMoves.append(boardCopy)
@@ -208,13 +235,17 @@ def getBoardCopy(board):
 
 # takes in a board and a player, returns a score (positive if the player won, negative otherwise)
 def simulate(currentBoard, player):
-    currentPlayer = player
+    currentPlayer = getNextPlayer(player)
     boardCopy = getBoardCopy(currentBoard)
+
+    if hasWon(boardCopy, currentPlayer):
+        return -50
+    elif hasWon(boardCopy, player):
+        return 50
 
     simulationMoves = []
     nextMoves = getNextMoves(boardCopy, currentPlayer)
 
-    score = 100
 
     while nextMoves != []:
         roll = random.randint(1, len(nextMoves)) - 1
@@ -225,37 +256,77 @@ def simulate(currentBoard, player):
         if hasWon(boardCopy, currentPlayer):
             break
 
-        score -= 1
-
-        player = getNextPlayer(currentPlayer)
+        currentPlayer = getNextPlayer(currentPlayer)
         nextMoves = getNextMoves(boardCopy, currentPlayer)
 
-    if player != currentPlayer and hasWon(boardCopy, player):
-        score *= -1
+    if player != currentPlayer and hasWon(boardCopy, currentPlayer):
+        score = -50
+    elif player == currentPlayer and hasWon(boardCopy, currentPlayer):
+        score = 50
+    else:
+        score = 0
 
+    """try:
+        printBoard(simulationMoves[-1])
+    except:
+        printBoard(currentBoard)
+    print(score)"""
     return score
 
 # Checks if someone has won (just for the input player)
 def hasWon(currentBoard, player):
-    winningSet = [player for _ in range(3)]
-
-    for row in currentBoard:
-        if row == winningSet:
+    for row in range(3):
+        if currentBoard[row][0] == player and currentBoard[row][1] == player and currentBoard[row][2] == player:
             return True
 
-    for y in range(len(currentBoard)):
-        column = [currentBoard[index][y] for index in range(3)]
-
-        if column == winningSet:
+    for col in range(3):
+        if currentBoard[0][col] == player and currentBoard[1][col] == player and currentBoard[2][col] == player:
             return True
 
-    diagonal1 = []
-    diagonal2 = []
-    for index in range(len(currentBoard)):
-        diagonal1.append(currentBoard[index][index])
-        diagonal2.append(currentBoard[index][3 - index - 1])
+    if currentBoard[0][0] == player and currentBoard[1][1] == player and currentBoard[2][2] == player:
+        return True
 
-    if diagonal1 == winningSet or diagonal2 == winningSet:
+    if currentBoard[0][2] == player and currentBoard[1][1] == player and currentBoard[2][0] == player:
         return True
 
     return False
+
+# prints the board (duh)
+def printBoard(board):
+    for row in range(3):
+        for col in range(3):
+            print(board[row][col], end = " ")
+        print()
+
+board = [
+    [".", ".", "."],
+    [".", ".", "."],
+    [".", ".", "."]
+]
+
+gameOver = False
+turn = "X"
+userPlayer = "X"
+
+while not gameOver:
+
+    printBoard(board)
+
+    if turn == userPlayer:
+        row = int(input("which row? "))
+        col = int(input("which col? "))
+        board[row][col] = turn
+
+    else:
+        tree = MCTree(GameState(board, turn))
+        move = tree.makeChoice(2000)
+        board = move[0]
+        print("expected:", move[1])
+
+
+    if hasWon(board, turn):
+        print(turn, "has won!")
+        printBoard(board)
+        gameOver = True
+
+    turn = getNextPlayer(turn)
