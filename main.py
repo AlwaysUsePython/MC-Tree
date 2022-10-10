@@ -90,4 +90,25 @@ class GameState:
 
         return childScores
 
+S0 = GameState(None)
+S1 = GameState(None)
+S2 = GameState(None)
 
+S1.setParent(S0)
+S2.setParent(S0)
+
+S1.addToTotal(20)
+S1.addVisit()
+print(S0.getChildrenUCBIs())
+
+
+S2.addToTotal(10)
+S2.addVisit()
+print(S0.getChildrenUCBIs())
+
+S3 = GameState(None)
+S3.setParent(S1)
+S3.addToTotal(0)
+S3.addVisit()
+
+print(S0.getChildrenUCBIs())
