@@ -38,11 +38,11 @@ class GameState:
 
         if hasWon(self.board, userPlayer):
             self.total = -50
-            self.visits = np.Infinity
+            self.visits = 0
             self.leaf = True
         elif hasWon(self.board, getNextPlayer(userPlayer)):
             self.total = 50
-            self.visits = np.Infinity
+            self.visits = 0
             self.leaf = True
 
 
@@ -52,11 +52,11 @@ class GameState:
         parentState.addChild(self)
         if hasWon(self.board, userPlayer):
             self.total = -50
-            self.visits = np.Infinity
+            self.visits = 0
             self.leaf = True
         elif hasWon(self.board, getNextPlayer(userPlayer)):
             self.total = 50
-            self.visits = np.Infinity
+            self.visits = 0
             self.leaf = True
 
     def addChild(self, childState):
@@ -64,6 +64,7 @@ class GameState:
 
     def roll(self):
         if self.leaf:
+            self.visits = -1
             return self.total
         return simulate(self.board, getNextPlayer(self.player))
 
@@ -105,7 +106,7 @@ class GameState:
         # - self.total -> doesn't cause 0 division errors so we don't care
 
         if self.visits == 0:
-            if self.player == userPlayer:
+            if self.player != userPlayer:
                 return -np.Infinity
             return np.Infinity
 
@@ -115,7 +116,7 @@ class GameState:
             # NOTE: np.log is actually ln(), np.log10 is standard log()
             explorationValue = 50 * np.sqrt(np.log(self.parent.visits)/self.visits)
 
-            if self.player == userPlayer:
+            if self.player != userPlayer:
                 explorationValue *= -1
 
             return exploitationValue + explorationValue
@@ -216,6 +217,7 @@ class MCTree:
         for item in range(len(childScores)):
             if childScores[item] > max:
                 approved = item
+                max = childScores[item]
 
         return [self.root.children[approved].board, max]
 
@@ -344,7 +346,7 @@ while not gameOver:
 
     else:
         tree = MCTree(GameState(board, turn))
-        move = tree.makeChoice(10)
+        move = tree.makeChoice(2000)
         board = move[0]
         print("expected:", move[1])
 
