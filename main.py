@@ -216,7 +216,7 @@ class MCTree:
             try:
                 childScores.append(child.total / child.visits)
             except:
-                pass
+                childScores.append(child.total)
 
         approved = 0
         try:
@@ -226,11 +226,11 @@ class MCTree:
                 if childScores[item] > max:
                     approved = item
                     max = childScores[item]
-            print(approved)
+            #print(approved)
             return [self.root.children[approved].board, max]
 
         except:
-            print("except")
+            #print("except")
             return [self.root.children[0].board, 50]
 
 
@@ -346,7 +346,7 @@ board = [
 
 gameOver = False
 turn = "X"
-userPlayer = "X"
+userPlayer = "O"
 
 while not gameOver:
 
@@ -361,7 +361,12 @@ while not gameOver:
         tree = MCTree(GameState(board, turn))
         move = tree.makeChoice(5000)
         board = move[0]
-        print("expected:", move[1])
+        if abs(move[1]) < 30:
+            print("expected: tie")
+        elif move[1] < 0:
+            print("expected: Elliot made a coding mistake")
+        else:
+            print("expected: I win!")
 
 
     if hasWon(board, turn):
